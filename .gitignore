@@ -91,6 +91,9 @@ celerybeat-schedule
 venv/
 ENV/
 
+# JetBrains settings
+.idea
+
 # Spyder project settings
 .spyderproject
 .spyproject

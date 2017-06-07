@@ -5,8 +5,8 @@ import re
 import glob
 from datetime import date
 
-from . import exe
-from . import git
+from metadater import exe
+from metadater import git
 
 
 class MetaData:
@@ -16,143 +16,148 @@ class MetaData:
         """
         Python (meta)   Exe (exe_info)      GIT	(git_info)	Example values
         ------------------------------------------------------------------
-        version		    FileVersion     	version			2016.10.10.0
-        name		    ProductName			?				Remote for Yamaha Receiver
         repo		    InternalName		repo			yamaha
         author		    CompanyName			author			Hylke Postma
+        version		    FileVersion     	version			2016.10.10.0
+        build		    PrivateBuild		build			master-2016.10.10-1-g658a581        
         org_filename    OriginalFilename	repo+build		yamaha-master-2016.10.10-1-g658a581
-        build		    PrivateBuild		build			master-2016.10.10-1-g658a581
-        description	    FileDescription		?				Simple program that let's you control your Yamaha receiver
-        copyright	    LegalCopyright     	?				Hylke Postma, 2016
 
+        name		    ProductName			?				Remote for Yamaha Receiver
+        description	    FileDescription		?				Simple program that let's you control your Yamaha receiver
+        copyright	    LegalCopyright     	?       		Hylke Postma, 2016
+
+        full_path       ?                   full_path       /path/to/yamaha
+        tags            ?                   tags            ['1.0.2', '1.0.3', '1.0.4']
+        
         """
 
-        # save information in our meta dict
-        self.meta = {}
+        # save information in our metadata dict
+        self.metadata = {}
 
         if sys.argv[0].strip().endswith(".exe"):  # sys.argv[0] contains filename
 
             exe_info = exe.get_info()
 
             if exe_info:
-                # fill self.meta with the values from the exe
-                self.meta["version"] = exe_info['FileVersion']
-                self.meta["name"] = exe_info['ProductName']
-                self.meta["repo"] = exe_info['InternalName']
-                self.meta["author"] = exe_info['CompanyName']
-                self.meta["org_filename"] = exe_info['OriginalFilename']
-                self.meta["build"] = exe_info['PrivateBuild']
-                self.meta["description"] = exe_info['FileDescription']
-                self.meta["copyright"] = exe_info['LegalCopyright']
+                # fill self.metadata with the values from the exe
+
+                self.metadata["repo"] = exe_info['InternalName']
+                self.metadata["author"] = exe_info['CompanyName']
+                self.metadata["version"] = exe_info['FileVersion']
+                self.metadata["build"] = exe_info['PrivateBuild']
+                self.metadata["org_filename"] = exe_info['OriginalFilename']
+
+                self.metadata["name"] = exe_info['ProductName']
+                self.metadata["description"] = exe_info['FileDescription']
+                self.metadata["copyright"] = exe_info['LegalCopyright']
 
         else:
 
             git_info = git.get_info()
 
             if git_info:
-                # fill self.meta with the values from git that we can know of
-                self.meta["version"] = git_info['version']
-                self.meta["repo"] = git_info['repo']
-                self.meta["full_path"] = git_info['full_path']
-                self.meta["author"] = git_info['author']
-                self.meta["org_filename"] = git_info['repo'] + "-" + git_info['build']
-                self.meta["build"] = git_info['build']
-                self.meta["tags"] = git_info['tags']
+                # fill self.metadata with the values from git that we can know of
+                self.metadata["repo"] = git_info['repo']
+                self.metadata["author"] = git_info['author']
+                self.metadata["version"] = git_info['version']
+                self.metadata["build"] = git_info['build']
+                self.metadata["org_filename"] = git_info['repo'] + "-" + git_info['build']
 
-            # overwrite self.meta with self.meta data from APP_META in applications root folder
-            if glob.glob(os.path.join(self.meta["full_path"], "APP_META*")):
-                print("Found APP_META file. Using this:")
-                print("\n----------------------\n")
-                # if click.confirm('Do you want to use it?'):
-                app_meta_file = glob.glob(os.path.join(self.meta["full_path"], "APP_META*"))[0]
-                with open(app_meta_file) as f:
-                    for line in f:
-                        print(line.strip())
-                        (key, val) = line.split(" = ")
-                        # possible to overwrite all values with the APP_META values
-                        self.meta[key] = val.strip()
+                self.metadata["full_path"] = git_info['full_path']
+                self.metadata["tags"] = git_info['tags']
+
+                # overwrite self.metadata with self.metadata data from APP_META in applications root folder
+                if glob.glob(os.path.join(self.metadata["full_path"], "APP_META*")):
+                    print("Found APP_META file. Using this:")
                     print("\n----------------------\n")
+                    # if click.confirm('Do you want to use it?'):
+                    app_meta_file = glob.glob(os.path.join(self.metadata["full_path"], "APP_META*"))[0]
+                    with open(app_meta_file) as f:
+                        for line in f:
+                            print(line.strip())
+                            (key, val) = line.split(" = ")
+                            # possible to overwrite all values with the APP_META values
+                            self.metadata[key] = val.strip()
+                        print("\n----------------------\n")
 
-            if "version" not in self.meta:
-                self.meta["version"] = click.prompt("Version", default="0.0.1.0")
+                if "name" not in self.metadata:
+                    name = re.sub("[^0-9a-zA-Z]+", ' ', self.metadata["repo"]).title()
+                    self.metadata["name"] = click.prompt("Please enter a name for your app", default=name)
 
-            if "repo" not in self.meta:
-                self.meta["repo"] = click.prompt("Repository", default="my-app")
+                if "description" not in self.metadata:
+                    try:
+                        description = src.main.__doc__
+                        self.metadata["description"] = click.prompt("Please enter a description for your app",
+                                                                    default=description)
+                    except:
+                        self.metadata["description"] = click.prompt("Please enter a description for your app",
+                                                                    default="Lorem ipsum this app dolor sit amet")
 
-            if "name" not in self.meta:
-                if "repo" in self.meta:
-                    name = re.sub("[^0-9a-zA-Z]+", ' ', self.meta["repo"]).title()
-                    self.meta["name"] = click.prompt("Application Name", default=name)
-                else:
-                    self.meta["name"] = click.prompt("Application Name", default="My App")
+                if "copyright" not in self.metadata:
+                    self.metadata["copyright"] = self.metadata["author"] + ", " + str(date.today().year)
 
-            if "author" not in self.meta:
-                self.meta["author"] = click.prompt("Author", default="Hylke Postma")
+                if not glob.glob(os.path.join(self.metadata["full_path"], "APP_META*"))\
+                        and not sys.argv[0].endswith(".exe"):
+                    if click.confirm('Do you want to create an APP_META file. '
+                                     'It will spare you these questions next time.'):
+                        with open(os.path.join(self.metadata["full_path"], "APP_META"), 'w') as f:
+                            for key, value in self.metadata.items():
+                                # only save not changing values in APP_META
+                                if key not in ["version", "org_filename", "build", "tags", "full_path", "copyright"]:
+                                    f.write(key + " = " + value + "\n")
 
-            if "org_filename" not in self.meta:
-                self.meta["org_filename"] = click.prompt("Original Filename", default="my-app-master-0.0.1.0-0-a101a101")
+            else:
+                print("This is not a frozen executable (with metadata) "
+                      "and there is no GIT repository (that fits the requirements).")
+                print("Metadater will now seed the application "
+                      "with some default metadata values for developing purposes.")
+                print("Don't use it this way in production.")
 
-            if "build" not in self.meta:
-                self.meta["build"] = click.prompt("Build", default="master-0.0.1.0-0-a101a101")
+                self.metadata["repo"] = "my-app"
+                self.metadata["author"] = "John Doe"
+                self.metadata["version"] = "0.0.1.0"
+                self.metadata["build"] = "master-0.0.1.0-1-00a00a00"
+                self.metadata["org_filename"] = "my-app-master-0.0.1.0-1-00a00a00"
 
-            if "description" not in self.meta:
-                try:
-                    description = src.main.__doc__
-                    self.meta["description"] = click.prompt("Description", default=description)
-                except:
-                    self.meta["description"] = click.prompt("Description", default="Lorem ipsum this app dolor sit amet")
-
-            if "copyright" not in self.meta:
-                if "author" in self.meta:
-                    self.meta["copyright"] = self.meta["author"] + ", " + str(date.today().year)
-                else:
-                    click.prompt("Copyright", default="Hylke Postma, " + str(date.today().year))
-
-            if not glob.glob(os.path.join(self.meta["full_path"], "APP_META*"))\
-                    and not sys.argv[0].endswith(".exe"):
-                if click.confirm('Do you want to create an APP_META.txt file. '
-                                 'It will save you some questions next time.'):
-                    with open(os.path.join(self.meta["full_path"], "APP_META.txt"), 'w') as f:
-                        for key, value in self.meta.items():
-                            # only save not changing values in APP_META
-                            if key not in ["version", "org_filename", "build", "tags", "full_path", "copyright"]:
-                                f.write(key + " = " + value + "\n")
+                self.metadata["name"] = "My App"
+                self.metadata["description"] = "Lorem ipsum this app dolor sit amet"
+                self.metadata["copyright"] = "John Doe, " + str(date.today().year)
 
     def get(self):
-        """ Get all the meta data """
-        return self.meta
-
-    def get_version(self):
-        """ Get the applications version from meta data """
-        return self.meta["version"]
-
-    def get_name(self):
-        """ Get the applications name from meta data """
-        return self.meta["name"]
+        """ Get all the metadata """
+        return self.metadata
 
     def get_repo(self):
-        """ Get the applications repo from meta data """
-        return self.meta["repo"]
+        """ Get the applications repo from metadata """
+        return self.metadata["repo"]
 
     def get_author(self):
-        """ Get the applications author from meta data """
-        return self.meta["author"]
+        """ Get the applications author from metadata """
+        return self.metadata["author"]
 
-    def get_org_filename(self):
-        """ Get the applications original filename from meta data """
-        return self.meta["org_filename"]
+    def get_version(self):
+        """ Get the applications version from metadata """
+        return self.metadata["version"]
 
     def get_build(self):
-        """ Get the applications build from meta data """
-        return self.meta["build"]
+        """ Get the applications build from metadata """
+        return self.metadata["build"]
+
+    def get_org_filename(self):
+        """ Get the applications original filename from metadata """
+        return self.metadata["org_filename"]
+
+    def get_name(self):
+        """ Get the applications name from metadata """
+        return self.metadata["name"]
 
     def get_description(self):
-        """ Get the applications description from meta data """
-        return self.meta["description"]
+        """ Get the applications description from metadata """
+        return self.metadata["description"]
 
     def get_copyright(self):
-        """ Get the applications copyright from meta data """
-        return self.meta["copyright"]
+        """ Get the applications copyright from metadata """
+        return self.metadata["copyright"]
 
 
 if __name__ == '__main__':
