@@ -13,7 +13,7 @@ Prerequisites
 -------------
 1. Your project should be under version control using GIT
 2. Your GIT repository should have at least one GIT commit
-3. Your GIT repository should have at least one GIT tag (using SemVer)
+3. Your GIT repository should have at least one GIT tag (using [SemVer](http://semver.org/ "SemVer Specification"))
 4. There should be a valid configured GIT user.name
 
 
@@ -58,8 +58,6 @@ copyright John Doe, 2017
 Available getters
 -----------------
 * get()
-
-
 * repo
 * author
 * version
