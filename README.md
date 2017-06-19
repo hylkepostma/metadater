@@ -34,7 +34,7 @@ To get a specific metadata field
 $ python
 >>> from metadater import MetaData
 >>> metadata = MetaData()
->>> metadata.get_version() 
+>>> metadata.version
 0.0.0.0
 ```
 To get all metadata fields
@@ -55,17 +55,19 @@ copyright John Doe, 2017
 ```
 
 
-Available methods
+Available getters
 -----------------
 * get()
-* get_repo()
-* get_author()
-* get_version()
-* get_build()
-* get_org_filename()
-* get_name()
-* get_description()
-* get_copyright()
+
+
+* repo
+* author
+* version
+* build
+* org_filename
+* name
+* description
+* copyright
 
 
 Override using APP_META file
@@ -97,5 +99,5 @@ Metadater uses a Python package called `pefile` for finding metadata in the PE h
 
 Acknowledgements
 ----------------
-https://github.com/erocarrera/pefile
-https://github.com/pallets/click
+- https://github.com/erocarrera/pefile
+- https://github.com/pallets/click

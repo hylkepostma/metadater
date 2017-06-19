@@ -4,6 +4,8 @@ import click
 import re
 import glob
 from datetime import date
+from subprocess import check_output
+from subprocess import CalledProcessError
 
 from metadater import exe
 from metadater import git
@@ -11,162 +13,190 @@ from metadater import git
 
 class MetaData:
 
+    """
+    Python (meta)   Exe (exe_info)      GIT	(git_info)	Example values
+    ------------------------------------------------------------------
+    repo		    InternalName		repo			my-ap
+    author		    CompanyName			author			John Doe
+    version		    FileVersion     	version			0.0.1.0
+    build		    PrivateBuild		build			master-0.0.1.0-1-00a00a00
+    org_filename    OriginalFilename	repo+build		my-app-master-0.0.1.0-1-00a00a00
+
+    name		    ProductName			-				My App
+    description	    FileDescription		-				Lorem ipsum this app dolor sit amet
+    copyright	    LegalCopyright     	-       		John Doe, 2017
+
+    full_path       -                   full_path       /path/to/my-app
+    tags            -                   tags            ['1.0.2', '1.0.3', '1.0.4']
+
+    """
+
     def __init__(self):
 
-        """
-        Python (meta)   Exe (exe_info)      GIT	(git_info)	Example values
-        ------------------------------------------------------------------
-        repo		    InternalName		repo			yamaha
-        author		    CompanyName			author			Hylke Postma
-        version		    FileVersion     	version			2016.10.10.0
-        build		    PrivateBuild		build			master-2016.10.10-1-g658a581        
-        org_filename    OriginalFilename	repo+build		yamaha-master-2016.10.10-1-g658a581
-
-        name		    ProductName			?				Remote for Yamaha Receiver
-        description	    FileDescription		?				Simple program that let's you control your Yamaha receiver
-        copyright	    LegalCopyright     	?       		Hylke Postma, 2016
-
-        full_path       ?                   full_path       /path/to/yamaha
-        tags            ?                   tags            ['1.0.2', '1.0.3', '1.0.4']
-        
-        """
-
-        # save information in our metadata dict
         self.metadata = {}
 
-        if sys.argv[0].strip().endswith(".exe"):  # sys.argv[0] contains filename
+        self._repo = "my-app"
+        self._author = "John Doe"
+        self._version = "0.0.1.0"
+        self._build = "master-0.0.1.0-1-00a00a00"
+        self._org_filename = "my-app-master-0.0.1.0-1-00a00a00"
 
-            exe_info = exe.get_info()
+        self._name = "My App"
+        self._description = "Lorem ipsum this app dolor sit amet"
+        self._copyright = "John Doe, " + str(date.today().year)
 
-            if exe_info:
-                # fill self.metadata with the values from the exe
+        self._full_path = None
+        self._tags = None
 
-                self.metadata["repo"] = exe_info['InternalName']
-                self.metadata["author"] = exe_info['CompanyName']
-                self.metadata["version"] = exe_info['FileVersion']
-                self.metadata["build"] = exe_info['PrivateBuild']
-                self.metadata["org_filename"] = exe_info['OriginalFilename']
+        self._source = None
+        self._has_app_meta_file = None
 
-                self.metadata["name"] = exe_info['ProductName']
-                self.metadata["description"] = exe_info['FileDescription']
-                self.metadata["copyright"] = exe_info['LegalCopyright']
+        self._init_source()
+        self._init_metadata_from_source()
 
+    def _init_source(self):
+        if sys.argv[0].endswith(".exe"):  # sys.argv[0] contains filename
+            self._source = "pe"
         else:
+            self._find_full_path()
+            if self._full_path:
+                self._source = "git"
+                self._has_app_meta_file = self._find_app_meta_file()
 
-            git_info = git.get_info()
+    def _find_full_path(self):
+        try:
+            self._full_path = check_output(["git", "rev-parse", "--show-toplevel"]).decode("utf-8").strip()
+        except CalledProcessError:
+            self._full_path = False
 
-            if git_info:
-                # fill self.metadata with the values from git that we can know of
-                self.metadata["repo"] = git_info['repo']
-                self.metadata["author"] = git_info['author']
-                self.metadata["version"] = git_info['version']
-                self.metadata["build"] = git_info['build']
-                self.metadata["org_filename"] = git_info['repo'] + "-" + git_info['build']
+    def _find_app_meta_file(self):
+        if glob.glob(os.path.join(self._full_path, "APP_META")):
+            return True
+        else:
+            return False
 
-                self.metadata["full_path"] = git_info['full_path']
-                self.metadata["tags"] = git_info['tags']
+    def _init_metadata_from_source(self):
+        if self._source == "pe":
+            self._init_metadata_from_pe()
+        elif self._source == "git":
+            self._init_metadata_from_git()
 
-                # overwrite self.metadata with self.metadata data from APP_META in applications root folder
-                if glob.glob(os.path.join(self.metadata["full_path"], "APP_META*")):
-                    print("Found APP_META file. Using this:")
-                    print("\n----------------------\n")
-                    # if click.confirm('Do you want to use it?'):
-                    app_meta_file = glob.glob(os.path.join(self.metadata["full_path"], "APP_META*"))[0]
-                    with open(app_meta_file) as f:
-                        for line in f:
-                            print(line.strip())
-                            (key, val) = line.split(" = ")
-                            # possible to overwrite all values with the APP_META values
-                            self.metadata[key] = val.strip()
-                        print("\n----------------------\n")
-
-                if "name" not in self.metadata:
-                    name = re.sub("[^0-9a-zA-Z]+", ' ', self.metadata["repo"]).title()
-                    self.metadata["name"] = click.prompt("Please enter a name for your app", default=name)
-
-                if "description" not in self.metadata:
-                    try:
-                        description = src.main.__doc__
-                        self.metadata["description"] = click.prompt("Please enter a description for your app",
-                                                                    default=description)
-                    except:
-                        self.metadata["description"] = click.prompt("Please enter a description for your app",
-                                                                    default="Lorem ipsum this app dolor sit amet")
-
-                if "copyright" not in self.metadata:
-                    self.metadata["copyright"] = self.metadata["author"] + ", " + str(date.today().year)
-
-                if not glob.glob(os.path.join(self.metadata["full_path"], "APP_META*"))\
-                        and not sys.argv[0].endswith(".exe"):
-                    if click.confirm('Do you want to create an APP_META file. '
-                                     'It will spare you these questions next time.'):
-                        with open(os.path.join(self.metadata["full_path"], "APP_META"), 'w') as f:
-                            for key, value in self.metadata.items():
-                                # only save not changing values in APP_META
-                                if key not in ["version", "org_filename", "build", "tags", "full_path", "copyright"]:
-                                    f.write(key + " = " + value + "\n")
-
+            if self._has_app_meta_file:
+                self._override_metadata_from_file()
             else:
-                print("This is not a frozen executable (with metadata) "
-                      "and there is no GIT repository (that fits the requirements).")
-                print("Metadater will now seed the application "
-                      "with some default metadata values for developing purposes.")
-                print("Don't use it this way in production.")
+                self._interactively_ask_for_metadata()
+                self._write_metadata_to_file()
 
-                self.metadata["repo"] = "my-app"
-                self.metadata["author"] = "John Doe"
-                self.metadata["version"] = "0.0.1.0"
-                self.metadata["build"] = "master-0.0.1.0-1-00a00a00"
-                self.metadata["org_filename"] = "my-app-master-0.0.1.0-1-00a00a00"
+    def _init_metadata_from_pe(self):
+        exe_info = exe.get_info()
+        if exe_info:
+            self._repo = exe_info['InternalName']
+            self._author = exe_info['CompanyName']
+            self._version = exe_info['FileVersion']
+            self._build = exe_info['PrivateBuild']
+            self._org_filename = exe_info['OriginalFilename']
 
-                self.metadata["name"] = "My App"
-                self.metadata["description"] = "Lorem ipsum this app dolor sit amet"
-                self.metadata["copyright"] = "John Doe, " + str(date.today().year)
+            self._name = exe_info['ProductName']
+            self._description = exe_info['FileDescription']
+            self._copyright = exe_info['LegalCopyright']
+
+    def _init_metadata_from_git(self):
+        git_info = git.get_info()
+        if git_info:
+            self._repo = git_info['repo']
+            self._author = git_info['author']
+            self._version = git_info['version']
+            self._build = git_info['build']
+            self._org_filename = git_info['repo'] + "-" + git_info['build']
+
+            self._copyright = self._author + ", " + str(date.today().year)
+
+            self._full_path = git_info['full_path']
+            self._tags = git_info['tags']
+
+    def _override_metadata_from_file(self):
+        app_meta_file = glob.glob(os.path.join(self._full_path, "APP_META*"))[0]
+        with open(app_meta_file) as f:
+            for line in f:
+                (key, val) = line.split(" = ")
+                # possibility to override all values with the APP_META values
+                self.key = val.strip()
+
+    def _interactively_ask_for_metadata(self):
+        name = re.sub("[^0-9a-zA-Z]+", ' ', self._repo).title()
+        self._name = click.prompt("Please enter a name for your app", default=name)
+
+        self._description = click.prompt("Please enter a description for your app",
+                                                        default="Lorem ipsum this app dolor sit amet")
+
+    def _write_metadata_to_file(self):
+        if click.confirm('Do you want to create an APP_META file. '
+                         'It will spare you these questions next time.'):
+            with open(os.path.join(self._full_path, "APP_META"), 'w') as f:
+                f.write("name = {}\n".format(self._name))
+                f.write("description = {}\n".format(self._description))
 
     def get(self):
-        """ Get all the metadata """
+        """ Get all the applications metadata as a dictionary """
+        self.metadata['repo'] = self._repo
+        self.metadata['author'] = self._author
+        self.metadata['version'] = self._version
+        self.metadata['build'] = self._build
+        self.metadata['org_filename'] = self._org_filename
+        self.metadata['name'] = self._name
+        self.metadata['description'] = self._description
+        self.metadata['copyright'] = self._copyright
+
         return self.metadata
 
-    def get_repo(self):
+    @property
+    def repo(self):
         """ Get the applications repo from metadata """
-        return self.metadata["repo"]
+        return self._repo
 
-    def get_author(self):
+    @property
+    def author(self):
         """ Get the applications author from metadata """
-        return self.metadata["author"]
+        return self._author
 
-    def get_version(self):
+    @property
+    def version(self):
         """ Get the applications version from metadata """
-        return self.metadata["version"]
+        return self._version
 
-    def get_build(self):
+    @property
+    def build(self):
         """ Get the applications build from metadata """
-        return self.metadata["build"]
+        return self._build
 
-    def get_org_filename(self):
+    @property
+    def org_filename(self):
         """ Get the applications original filename from metadata """
-        return self.metadata["org_filename"]
+        return self._org_filename
 
-    def get_name(self):
+    @property
+    def name(self):
         """ Get the applications name from metadata """
-        return self.metadata["name"]
+        return self._name
 
-    def get_description(self):
+    @property
+    def description(self):
         """ Get the applications description from metadata """
-        return self.metadata["description"]
+        return self._description
 
-    def get_copyright(self):
+    @property
+    def copyright(self):
         """ Get the applications copyright from metadata """
-        return self.metadata["copyright"]
+        return self._copyright
 
 
 if __name__ == '__main__':
 
-    app_meta = MetaData()
+    metadata = MetaData()
 
-    version = app_meta.get_version()
+    version = metadata.version
     print(version)
 
-    meta = app_meta.get()
-    for key in meta:
-        print(key, meta[key])
+    metadata = metadata.get()
+    for field in metadata:
+        print(field, metadata[field])
