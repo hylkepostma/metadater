@@ -33,7 +33,7 @@ class MetaData:
 
     def __init__(self):
 
-        self.metadata = {}
+        self._metadata = {}
 
         self._repo = "my-app"
         self._author = "John Doe"
@@ -88,43 +88,43 @@ class MetaData:
                 self._write_metadata_to_file()
 
     def _init_metadata_from_pe(self):
-        exe_info = exe.get_info()
-        if exe_info:
-            self._repo = exe_info['InternalName']
-            self._author = exe_info['CompanyName']
-            self._version = exe_info['FileVersion']
-            self._build = exe_info['PrivateBuild']
-            self._org_filename = exe_info['OriginalFilename']
+        _exe_info = exe.get_info()
+        if _exe_info:
+            self._repo = _exe_info['InternalName']
+            self._author = _exe_info['CompanyName']
+            self._version = _exe_info['FileVersion']
+            self._build = _exe_info['PrivateBuild']
+            self._org_filename = _exe_info['OriginalFilename']
 
-            self._name = exe_info['ProductName']
-            self._description = exe_info['FileDescription']
-            self._copyright = exe_info['LegalCopyright']
+            self._name = _exe_info['ProductName']
+            self._description = _exe_info['FileDescription']
+            self._copyright = _exe_info['LegalCopyright']
 
     def _init_metadata_from_git(self):
-        git_info = git.get_info()
-        if git_info:
-            self._repo = git_info['repo']
-            self._author = git_info['author']
-            self._version = git_info['version']
-            self._build = git_info['build']
-            self._org_filename = git_info['repo'] + "-" + git_info['build']
+        _git_info = git.get_info()
+        if _git_info:
+            self._repo = _git_info['repo']
+            self._author = _git_info['author']
+            self._version = _git_info['version']
+            self._build = _git_info['build']
+            self._org_filename = _git_info['repo'] + "-" + _git_info['build']
 
             self._copyright = self._author + ", " + str(date.today().year)
 
-            self._full_path = git_info['full_path']
-            self._tags = git_info['tags']
+            self._full_path = _git_info['full_path']
+            self._tags = _git_info['tags']
 
     def _override_metadata_from_file(self):
         app_meta_file = glob.glob(os.path.join(self._full_path, "APP_META*"))[0]
-        with open(app_meta_file) as f:
-            for line in f:
-                (key, val) = line.split(" = ")
+        with open(app_meta_file) as _f:
+            for _line in _f:
+                (_key, _val) = _line.split(" = ")
                 # possibility to override all values with the APP_META values
-                self.key = val.strip()
+                self._key = _val.strip()
 
     def _interactively_ask_for_metadata(self):
-        name = re.sub("[^0-9a-zA-Z]+", ' ', self._repo).title()
-        self._name = click.prompt("Please enter a name for your app", default=name)
+        _name = re.sub("[^0-9a-zA-Z]+", ' ', self._repo).title()
+        self._name = click.prompt("Please enter a name for your app", default=_name)
 
         self._description = click.prompt("Please enter a description for your app",
                                                         default="Lorem ipsum this app dolor sit amet")
@@ -138,16 +138,16 @@ class MetaData:
 
     def get(self):
         """ Get all the applications metadata as a dictionary """
-        self.metadata['repo'] = self._repo
-        self.metadata['author'] = self._author
-        self.metadata['version'] = self._version
-        self.metadata['build'] = self._build
-        self.metadata['org_filename'] = self._org_filename
-        self.metadata['name'] = self._name
-        self.metadata['description'] = self._description
-        self.metadata['copyright'] = self._copyright
+        self._metadata['repo'] = self._repo
+        self._metadata['author'] = self._author
+        self._metadata['version'] = self._version
+        self._metadata['build'] = self._build
+        self._metadata['org_filename'] = self._org_filename
+        self._metadata['name'] = self._name
+        self._metadata['description'] = self._description
+        self._metadata['copyright'] = self._copyright
 
-        return self.metadata
+        return self._metadata
 
     @property
     def repo(self):
@@ -188,6 +188,11 @@ class MetaData:
     def copyright(self):
         """ Get the applications copyright from metadata """
         return self._copyright
+
+    @property
+    def tags(self):
+        """ Get the applications tags as a list """
+        return self._tags
 
 
 if __name__ == '__main__':
