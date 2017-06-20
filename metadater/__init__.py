@@ -146,6 +146,7 @@ class MetaData:
         self._metadata['name'] = self._name
         self._metadata['description'] = self._description
         self._metadata['copyright'] = self._copyright
+        self._metadata['tags'] = self._tags
 
         return self._metadata
 
