@@ -7,15 +7,6 @@ https://github.com/pypa/sampleproject
 
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
-# To use a consistent encoding
-from codecs import open
-from os import path
-
-here = path.abspath(path.dirname(__file__))
-
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
 
 setup(
     name='metadater',
@@ -23,11 +14,11 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.1',
+    version='1.0.2',
 
     description="Package for Python providing an easy way to get a (Windows) app's version and other metadata "
                 "from GIT (during development) or PE (Portable Executable) (after freezing).",
-    long_description=long_description,
+    long_description="For more information see: https://github.com/hylkepostma/metadater",
 
     # The project's main homepage.
     url='https://github.com/hylkepostma/metadater',
@@ -45,7 +36,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -53,6 +44,8 @@ setup(
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: MIT License',
+
+        'Operating System :: Microsoft :: Windows',
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
@@ -67,7 +60,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='sample setuptools development bootstrap python package',
+    keywords='python git pefile windows metadata python3',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
@@ -110,7 +103,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'metadater=metadater:main',
+            'metadater=metadater.__init__:main',
         ],
     },
 )
