@@ -16,7 +16,7 @@ class MetaData:
     """
     Python (meta)   Exe (exe_info)      GIT	(git_info)	Example values
     ------------------------------------------------------------------
-    repo		    InternalName		repo			my-ap
+    repo		    InternalName		repo			my-app
     author		    CompanyName			author			John Doe
     version		    FileVersion     	version			0.0.1.0
     build		    PrivateBuild		build			master-0.0.1.0-1-00a00a00
@@ -80,7 +80,6 @@ class MetaData:
             self._init_metadata_from_pe()
         elif self._source == "git":
             self._init_metadata_from_git()
-
             if self._has_app_meta_file:
                 self._override_metadata_from_file()
             else:
@@ -119,15 +118,14 @@ class MetaData:
         with open(app_meta_file) as _f:
             for _line in _f:
                 (_key, _val) = _line.split(" = ")
-                # possibility to override all values with the APP_META values
-                self._key = _val.strip()
+                setattr(self, "_{}".format(_key.strip()), _val.strip())
 
     def _interactively_ask_for_metadata(self):
-        _name = re.sub("[^0-9a-zA-Z]+", ' ', self._repo).title()
+        _name = re.sub('[^0-9a-zA-Z]+', ' ', self._repo).title()
         self._name = click.prompt("Please enter a name for your app", default=_name)
 
         self._description = click.prompt("Please enter a description for your app",
-                                                        default="Lorem ipsum this app dolor sit amet")
+                                         default="Lorem ipsum this app dolor sit amet")
 
     def _write_metadata_to_file(self):
         if click.confirm('Do you want to create an APP_META file. '
