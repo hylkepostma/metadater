@@ -8,12 +8,13 @@ def get_info():
     try:
 
         pe = pefile.PE(sys.argv[0])  # sys.argv[0]
+
         exe_info = {}
-        for fileinfo in pe.FileInfo:
-            if fileinfo.Key == 'StringFileInfo':
-                for st in fileinfo.StringTable:
-                    for entry in st.entries.items():
-                        exe_info[entry[0]] = entry[1]
+        for entry in pe.FileInfo:
+            if hasattr(entry, 'StringTable'):
+                for st_entry in entry.StringTable:
+                    for item in st_entry.entries.items():
+                        exe_info[item[0].decode()] = item[1].decode()
 
         return exe_info
 
