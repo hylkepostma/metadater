@@ -119,6 +119,9 @@ class MetaData:
             for _line in _f:
                 (_key, _val) = _line.split(" = ")
                 setattr(self, "_{}".format(_key.strip()), _val.strip())
+                if _key.strip() == "author":
+                    # since author is part of copyright, reset copyright too
+                    self._copyright = self._author + ", " + str(date.today().year)
 
     def _interactively_ask_for_metadata(self):
         _name = re.sub('[^0-9a-zA-Z]+', ' ', self._repo).title()
