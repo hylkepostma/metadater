@@ -55,7 +55,8 @@ class MetaData:
         self._init_metadata_from_source()
 
     def _init_source(self):
-        if sys.argv[0].endswith(".exe"):  # sys.argv[0] contains filename
+        if hasattr(sys, 'frozen'):
+            # The program is frozen with PyInstaller
             self._source = "pe"
         else:
             self._find_full_path()
