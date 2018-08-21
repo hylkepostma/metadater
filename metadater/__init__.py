@@ -1,5 +1,6 @@
 import sys
-import os.path
+import logging
+import os
 import click
 import re
 import glob
@@ -10,6 +11,7 @@ from subprocess import CalledProcessError
 from metadater import exe
 from metadater import git
 
+logger = logging.getLogger(__name__)
 
 class MetaData:
 
@@ -57,8 +59,10 @@ class MetaData:
     def _init_source(self):
         if hasattr(sys, 'frozen'):
             # The program is frozen with PyInstaller
+            logger.debug("I think I'm frozen")
             self._source = "pe"
         else:
+            logger.debug("I think I'm a script")
             self._find_full_path()
             if self._full_path:
                 self._source = "git"
@@ -199,6 +203,8 @@ class MetaData:
 
 
 if __name__ == '__main__':
+
+    logging.basicConfig(level=logging.DEBUG)
 
     metadata = MetaData()
 
