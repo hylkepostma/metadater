@@ -1,8 +1,9 @@
 import os
-
+import logging
 from subprocess import check_output
 from subprocess import CalledProcessError
 
+logger = logging.getLogger(__name__)
 
 def get_info():
     """ This takes information from your local git repo and makes it usable """
@@ -33,6 +34,7 @@ def get_info():
         git_info["full_path"] = git_info["repo"]  # because we want to keep the full_path
 
     except CalledProcessError as e:
+        logger.debug(e)
         return False
 
     # all subprocess.check_output output is in bytes, let's decode it to utf-8 ánd strip \n
@@ -51,11 +53,14 @@ def get_info():
     # repo 		            boostrap-python-exe
     git_info["repo"] = os.path.basename(os.path.normpath(git_info["repo"]))
 
+    logger.debug("Information from Git: %s" % git_info)
     return git_info
 
 
 if __name__ == '__main__':
 
-    for key in get_info():
-        print(key, get_info()[key])
+    logging.basicConfig(level=logging.DEBUG)
 
+    info = get_info()
+    for key in info:
+        print(key, info[key])
