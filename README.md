@@ -1,5 +1,7 @@
 Metadater
 =========
+[![Downloads](https://pepy.tech/badge/metadater)](https://pepy.tech/project/metadater)
+
 Package for Python providing an easy way to get a (Windows) app's version and other metadata from GIT (during development) or PE (Portable Executable) (after freezing).
 
 https://github.com/hylkepostma/metadater
