@@ -23,7 +23,7 @@ When you inject these metadata fields to your executable after the freezing proc
 
 Using pip:
 
-```PowerShell
+```console
 pip install metadater
 ```
 
@@ -31,21 +31,26 @@ pip install metadater
 
 To get a specific metadata field:
 
-```PowerShell
-$ python
->>> from metadater import MetaData
->>> metadata = MetaData()
->>> metadata.version
+```python
+from metadater import MetaData
+metadata = MetaData()
+metadata.version
+```
+
+```stdout
 1.2.3
 ```
 
 To get all metadata fields:
-```PowerShell
-$ python
->>> from metadater import MetaData
->>> metadata = MetaData().get()
->>> for field in metadata:
->>>     print(field, metadata[field])
+
+```python
+from metadater import MetaData
+metadata = MetaData().get()
+for field in metadata:
+    print(field, metadata[field])
+```
+
+```stdout
 repo metadater
 author John Doe
 build 1.1.0+1-g9d1df92
