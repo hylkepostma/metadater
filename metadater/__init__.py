@@ -101,7 +101,7 @@ class MetaData:
                 self._product_version = f"{self._version}-{self._prerelease}"
             else:
                 self._product_version = self._version_4_parts
-            self._org_filename = self._repo + "-" + self._build
+            self._org_filename = self._repo + "-" + self._semver
             self._copyright = self._author + ", " + str(date.today().year)
 
     def _override_metadata_from_file(self):
