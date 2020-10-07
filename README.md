@@ -95,20 +95,22 @@ author = Fancy Company Name
 
 Metadater uses a Python package called `pefile` for finding metadata in the PE headers and makes it available using the following mapping:
 
-| Metadater       | Frozen executable (PE)                | As script in Git repository                  | Example values                                                                |
-|-----------------|---------------------------------------|----------------------------------------------|-------------------------------------------------------------------------------|
-| repo            | InternalName                          | Name of the repository folder                | my-app                                                                        |
-| author          | CompanyName                           | Git user.name                                | John Doe                                                                      |
-| version_info    | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed build  | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed build         | VersionInfo(major=1, minor=2, patch=3, prerelease='None', build='1-00a00a00') |
-| build           | PrivateBuild                          | Variation of Git describe (in SemVer format) | 1.2.3+1-00a00a00 / 1.2.3-rc1+1-00a00a00                                       |
-| version         | Major.Minor.Patch from version_info   | Major.Minor.Patch from version_info          | 1.2.3                                                                         |
-| version_4_parts | Major.Minor.Patch.0 from version_info | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-| file_version    | FileVersion                           | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-| product_version | ProductVersion                        | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-| org_filename    | OriginalFilename                      | repo+build                                   | my-app-1.2.3+1-00a00a00                                                       |
-| name            | ProductName                           | interactive / APP_META file                  | My App                                                                        |
-| description     | FileDescription                       | interactive / APP_META file                  | Lorem ipsum this app dolor sit amet                                           |
-| copyright       | LegalCopyright                        | interactive / APP_META file                  | John Doe, 2017                                                                |
+| Metadater       | Frozen executable (PE)                | As script in Git repository                    | Example values                                                                |
+|-----------------|---------------------------------------|------------------------------------------------|-------------------------------------------------------------------------------|
+| repo            | InternalName                          | Name of the repository folder                  | my-app                                                                        |
+| author          | CompanyName                           | Git user.name                                  | John Doe                                                                      |
+| semver          | PrivateBuild                          | Variation of Git describe (in SemVer format)   | 1.2.3+1-00a00a00 / 1.2.3-rc.1+1-00a00a00                                      |
+| version_info    | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver          | VersionInfo(major=1, minor=2, patch=3, prerelease='rc.1', build='1-00a00a00') |
+| version         | major.minor.patch from version_info   | major.minor.patch from version_info            | 1.2.3                                                                         |
+| prerelease      | prelease from version_info            | prerelease from version_info                   | rc.1                                                                          |
+| build           | build from version_info               | build from version_info                        | 1-00a00a00                                                                    |
+| version_4_parts | major.minor.patch.0 from version_info | major.minor.patch.0 from version_info          | 1.2.3.0                                                                       |
+| file_version    | FileVersion                           | major.minor.patch.0 from version_info          | 1.2.3.0                                                                       |
+| product_version | ProductVersion                        | major.minor.patch-prerelease from version_info | 1.2.3.0 / 1.2.3-rc.1                                                          |
+| org_filename    | OriginalFilename                      | repo+build                                     | my-app-1.2.3+1-00a00a00                                                       |
+| name            | ProductName                           | interactive / APP_META file                    | My App                                                                        |
+| description     | FileDescription                       | interactive / APP_META file                    | Lorem ipsum this app dolor sit amet                                           |
+| copyright       | LegalCopyright                        | interactive / APP_META file                    | John Doe, 2017                                                                |
 
 ## Acknowledgements
 

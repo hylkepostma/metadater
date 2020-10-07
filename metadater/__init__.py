@@ -26,22 +26,6 @@ ERROR_NO_GIT = """
 
 
 class MetaData:
-    """
-    | Metadater       | Frozen executable (PE)                | As script in Git repository                  | Example values                                                                |
-    |-----------------|---------------------------------------|----------------------------------------------|-------------------------------------------------------------------------------|
-    | repo            | InternalName                          | Name of the repository folder                | my-app                                                                        |
-    | author          | CompanyName                           | Git user.name                                | John Doe                                                                      |
-    | version_info    | VersionInfo object from parsed build  | VersionInfo object from parsed build         | VersionInfo(major=1, minor=2, patch=3, prerelease='None', build='1-00a00a00') |
-    | build           | PrivateBuild                          | Variation of Git describe (in SemVer format) | 1.2.3+1-00a00a00 / 1.2.3-rc1+1-00a00a00                                       |
-    | version         | Major.Minor.Patch from version_info   | Major.Minor.Patch from version_info          | 1.2.3                                                                         |
-    | version_4_parts | Major.Minor.Patch.0 from version_info | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-    | file_version    | FileVersion                           | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-    | product_version | ProductVersion                        | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
-    | org_filename    | OriginalFilename                      | repo+build                                   | my-app-1.2.3+1-00a00a00                                                       |
-    | name            | ProductName                           | interactive / APP_META file                  | My App                                                                        |
-    | description     | FileDescription                       | interactive / APP_META file                  | Lorem ipsum this app dolor sit amet                                           |
-    | copyright       | LegalCopyright                        | interactive / APP_META file                  | John Doe, 2017                                                                |
-    """
 
     def __init__(self):
         self._determine_source()
@@ -88,9 +72,11 @@ class MetaData:
         if _exe_info:
             self._repo = _exe_info['InternalName']
             self._author = _exe_info['CompanyName']
-            self._build = _exe_info['PrivateBuild']
-            self._version_info = VersionInfo.parse(self._build)
+            self._semver = _exe_info['PrivateBuild']
+            self._version_info = VersionInfo.parse(self._semver)
             self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
+            self._prerelease = self._version_info.prerelease
+            self._build = self._version_info.build
             self._version_4_parts = f"{self._version}.0"
             self._file_version = _exe_info['FileVersion']
             self._product_version = _exe_info['ProductVersion']
@@ -104,12 +90,17 @@ class MetaData:
         if _git_info:
             self._repo = os.path.basename(os.path.normpath(_git_info["full_path"]))
             self._author = _git_info['author']
-            self._build = _git_info['describe'].replace(_git_info["last_tag"] + "-", _git_info["last_tag"] + "+")
-            self._version_info = VersionInfo.parse(self._build)
+            self._semver = _git_info['describe'].replace(_git_info["last_tag"] + "-", _git_info["last_tag"] + "+")
+            self._version_info = VersionInfo.parse(self._semver)
             self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
+            self._prerelease = self._version_info.prerelease
+            self._build = self._version_info.build
             self._version_4_parts = f"{self._version}.0"
             self._file_version = self._version_4_parts
-            self._product_version = self._version_4_parts
+            if self._prerelease:
+                self._product_version = f"{self._version}-{self._prerelease}"
+            else:
+                self._product_version = self._version_4_parts
             self._org_filename = self._repo + "-" + self._build
             self._copyright = self._author + ", " + str(date.today().year)
 
@@ -146,8 +137,8 @@ class MetaData:
         return self._author
 
     @property
-    def build(self):
-        return self._build
+    def semver(self):
+        return self._semver
 
     @property
     def version_info(self):
@@ -156,6 +147,14 @@ class MetaData:
     @property
     def version(self):
         return self._version
+
+    @property
+    def prerelease(self):
+        return self._prerelease
+
+    @property
+    def build(self):
+        return self._build
 
     @property
     def version_4_parts(self):
@@ -190,9 +189,11 @@ class MetaData:
         return {
             'repo': self.repo,
             'author': self.author,
-            'build': self.build,
+            'semver': self.semver,
             'version_info': self.version_info,
             'version': self.version,
+            'prerelease': self.prerelease,
+            'build': self.build,
             'version_4_parts': self.version_4_parts,
             'file_version': self.file_version,
             'product_version': self.product_version,
