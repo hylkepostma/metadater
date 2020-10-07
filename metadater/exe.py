@@ -1,38 +1,33 @@
-import sys
 import logging
-import pefile  # for portable executable
+import sys
+
+import pefile
 
 logger = logging.getLogger(__name__)
 
+
 def get_info():
-    """ This takes information from your executable and makes it usable """
-
+    """ Get information from an executable """
     try:
-
-        pe = pefile.PE(sys.argv[0])  # sys.argv[0]
-
-        # It is possible to access StingTable entries like this:
-        logger.debug("The FileVersion of the PE is: %s" % pe.FileInfo[0][0].StringTable[0].entries[b'FileVersion'].decode('utf-8'))
-
+        pe = pefile.PE(sys.argv[0])
+        # Access a StingTable entry like FileVersion:
+        file_version = pe.FileInfo[0][0].StringTable[0].entries[b'FileVersion'].decode('utf-8')
+        logger.debug(f"The FileVersion of the PE is: {file_version}")
         exe_info = {}
         for entry in pe.FileInfo[0]:
             if hasattr(entry, 'StringTable'):
                 for st_entry in entry.StringTable:
                     for item in st_entry.entries.items():
                         exe_info[item[0].decode()] = item[1].decode()
-
         logger.debug("Entries in the StringTable: %s" % exe_info)
         return exe_info
-
     except Exception as e:
         logger.debug(e)
         return False
 
 
 if __name__ == '__main__':
-
     logging.basicConfig(level=logging.DEBUG)
-
     info = get_info()
-    for key in info:
-        print(key, info[key])
+    for k in info:
+        print(k, info[k])
