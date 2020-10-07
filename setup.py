@@ -14,10 +14,10 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.1.0',
+    version='2.0.0',
 
-    description="Package for Python providing an easy way to get a (Windows) app's version and other metadata "
-                "from GIT (during development) or PE (Portable Executable) (after freezing).",
+    description="A Python package providing an easy way to get a Windows app's version and other metadata "
+                "from Git during development or from the executable after freezing.",
     long_description="For more information see: https://github.com/hylkepostma/metadater",
 
     # The project's main homepage.
@@ -36,7 +36,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -57,6 +57,8 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 
     # What does your project relate to?
