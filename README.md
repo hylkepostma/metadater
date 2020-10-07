@@ -4,12 +4,12 @@
 
 A Python package providing an easy way to get a Windows app's version and other metadata from Git during development or from the executable after freezing.
 
-https://github.com/hylkepostma/metadater
+<https://github.com/hylkepostma/metadater>
 
-When building a portable executable (for example using [PyInstaller](https://github.com/pyinstaller/pyinstaller)) we add metadata like the app's name and version. Most of this metadata is already available when using Git. 
+When building a portable executable (for example using [PyInstaller](https://github.com/pyinstaller/pyinstaller)) we add metadata like the app's name and version. Most of this metadata is already available when using Git.
 Think for example of version numbering in Git tags and the author's name in the Git user.name setting.
 
-Metadater provides an easy way to get this metadata from Git and to use it in your application during development. 
+Metadater provides an easy way to get this metadata from Git and to use it in your application during development.
 When you inject these metadata fields to your executable after the freezing process (for example using [Verpatch](https://github.com/pavel-a/ddverpatch)) you can also retrieve this metadata after freezing your application using the same methods. See also the mapping below.
 
 ## Prerequisites
@@ -23,7 +23,7 @@ When you inject these metadata fields to your executable after the freezing proc
 
 Using pip:
 
-```
+```console
 pip install metadater
 ```
 
@@ -31,21 +31,26 @@ pip install metadater
 
 To get a specific metadata field:
 
-```	
-$ python
->>> from metadater import MetaData
->>> metadata = MetaData()
->>> metadata.version
+```python
+from metadater import MetaData
+metadata = MetaData()
+metadata.version
+```
+
+```stdout
 1.2.3
 ```
 
 To get all metadata fields:
+
+```python
+from metadater import MetaData
+metadata = MetaData().get()
+for field in metadata:
+    print(field, metadata[field])
 ```
-$ python
->>> from metadater import MetaData
->>> metadata = MetaData().get()
->>> for field in metadata:
->>>     print(field, metadata[field])
+
+```stdout
 repo metadater
 author John Doe
 build 1.1.0+1-g9d1df92
@@ -66,7 +71,7 @@ copyright John Doe, 2020
 - repo
 - author
 - build
-- version_info
+- version_info (returning a [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object)
 - version
 - version_4_parts
 - file_version
@@ -76,17 +81,15 @@ copyright John Doe, 2020
 - description
 - copyright
 
-
 ## Override using APP_META file
 
 You can override or expand the Git values using an APP_META file in your repository's root.
 The file should contain the fields (and values) you want to override, like so:
 
-```
+```APP_META
 name = Fancy Company Name - My App
 author = Fancy Company Name
 ```
-
 
 ## Mapping
 
@@ -96,7 +99,7 @@ Metadater uses a Python package called `pefile` for finding metadata in the PE h
 |-----------------|---------------------------------------|----------------------------------------------|-------------------------------------------------------------------------------|
 | repo            | InternalName                          | Name of the repository folder                | my-app                                                                        |
 | author          | CompanyName                           | Git user.name                                | John Doe                                                                      |
-| version_info    | VersionInfo object from parsed build  | VersionInfo object from parsed build         | VersionInfo(major=1, minor=2, patch=3, prerelease='None', build='1-00a00a00') |
+| version_info    | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed build  | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed build         | VersionInfo(major=1, minor=2, patch=3, prerelease='None', build='1-00a00a00') |
 | build           | PrivateBuild                          | Variation of Git describe (in SemVer format) | 1.2.3+1-00a00a00 / 1.2.3-rc1+1-00a00a00                                       |
 | version         | Major.Minor.Patch from version_info   | Major.Minor.Patch from version_info          | 1.2.3                                                                         |
 | version_4_parts | Major.Minor.Patch.0 from version_info | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
@@ -107,7 +110,8 @@ Metadater uses a Python package called `pefile` for finding metadata in the PE h
 | description     | FileDescription                       | interactive / APP_META file                  | Lorem ipsum this app dolor sit amet                                           |
 | copyright       | LegalCopyright                        | interactive / APP_META file                  | John Doe, 2017                                                                |
 
-Acknowledgements
-----------------
-- https://github.com/erocarrera/pefile
-- https://github.com/pallets/click
+## Acknowledgements
+
+- <https://github.com/erocarrera/pefile>
+- <https://github.com/pallets/click>
+- <https://github.com/python-semver/python-semver/>
