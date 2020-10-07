@@ -1,3 +1,4 @@
 click==6.7
 future==0.16.0
 pefile==2018.8.8
+semver==2.10.2

@@ -1,62 +1,53 @@
-import sys
+import glob
 import logging
 import os
-import click
 import re
-import glob
+import sys
 from datetime import date
-from subprocess import check_output
 from subprocess import CalledProcessError
+from subprocess import check_output
+
+import click
+from semver import VersionInfo
 
 from metadater import exe
 from metadater import git
 
 logger = logging.getLogger(__name__)
 
+ERROR_NO_GIT = """
+
+    Make sure that:
+        - Your project has a Git repository (git init)
+        - Your repository has at least one commit (git add && git commit)
+        - Your repository has at least one tag following the SemVer specification (https://semver.org/) (git tag)
+        - There is a Git user.name configured (git config user.name "John Doe")
+"""
+
+
 class MetaData:
-
     """
-    Python (meta)   Exe (exe_info)      GIT	(git_info)	Example values
-    ------------------------------------------------------------------
-    repo		    InternalName		repo			my-app
-    author		    CompanyName			author			John Doe
-    version		    FileVersion     	version			0.0.1.0
-    build		    PrivateBuild		build			master-0.0.1.0-1-00a00a00
-    org_filename    OriginalFilename	repo+build		my-app-master-0.0.1.0-1-00a00a00
-
-    name		    ProductName			-				My App
-    description	    FileDescription		-				Lorem ipsum this app dolor sit amet
-    copyright	    LegalCopyright     	-       		John Doe, 2017
-
-    full_path       -                   full_path       /path/to/my-app
-    tags            -                   tags            ['1.0.2', '1.0.3', '1.0.4']
-
+    | Metadater       | Frozen executable (PE)                | As script in Git repository                  | Example values                                                                |
+    |-----------------|---------------------------------------|----------------------------------------------|-------------------------------------------------------------------------------|
+    | repo            | InternalName                          | Name of the repository folder                | my-app                                                                        |
+    | author          | CompanyName                           | Git user.name                                | John Doe                                                                      |
+    | version_info    | VersionInfo object from parsed build  | VersionInfo object from parsed build         | VersionInfo(major=1, minor=2, patch=3, prerelease='None', build='1-00a00a00') |
+    | build           | PrivateBuild                          | Variation of Git describe (in SemVer format) | 1.2.3+1-00a00a00 / 1.2.3-rc1+1-00a00a00                                       |
+    | version         | Major.Minor.Patch from version_info   | Major.Minor.Patch from version_info          | 1.2.3                                                                         |
+    | version_4_parts | Major.Minor.Patch.0 from version_info | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
+    | file_version    | FileVersion                           | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
+    | product_version | ProductVersion                        | Major.Minor.Patch.0 from version_info        | 1.2.3.0                                                                       |
+    | org_filename    | OriginalFilename                      | repo+build                                   | my-app-1.2.3+1-00a00a00                                                       |
+    | name            | ProductName                           | interactive / APP_META file                  | My App                                                                        |
+    | description     | FileDescription                       | interactive / APP_META file                  | Lorem ipsum this app dolor sit amet                                           |
+    | copyright       | LegalCopyright                        | interactive / APP_META file                  | John Doe, 2017                                                                |
     """
 
     def __init__(self):
-
-        self._metadata = {}
-
-        self._repo = "my-app"
-        self._author = "John Doe"
-        self._version = "0.0.1.0"
-        self._build = "master-0.0.1.0-1-00a00a00"
-        self._org_filename = "my-app-master-0.0.1.0-1-00a00a00"
-
-        self._name = "My App"
-        self._description = "Lorem ipsum this app dolor sit amet"
-        self._copyright = "John Doe, " + str(date.today().year)
-
-        self._full_path = None
-        self._tags = None
-
-        self._source = None
-        self._has_app_meta_file = None
-
-        self._init_source()
+        self._determine_source()
         self._init_metadata_from_source()
 
-    def _init_source(self):
+    def _determine_source(self):
         if hasattr(sys, 'frozen'):
             # The program is frozen with PyInstaller
             logger.debug("I think I'm frozen")
@@ -72,7 +63,8 @@ class MetaData:
         try:
             self._full_path = check_output(["git", "rev-parse", "--show-toplevel"]).decode("utf-8").strip()
         except CalledProcessError:
-            self._full_path = False
+            logger.error(ERROR_NO_GIT)
+            exit(1)
 
     def _find_app_meta_file(self):
         if glob.glob(os.path.join(self._full_path, "APP_META")):
@@ -96,10 +88,13 @@ class MetaData:
         if _exe_info:
             self._repo = _exe_info['InternalName']
             self._author = _exe_info['CompanyName']
-            self._version = _exe_info['FileVersion']
             self._build = _exe_info['PrivateBuild']
+            self._version_info = VersionInfo.parse(self._build)
+            self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
+            self._version_4_parts = f"{self._version}.0"
+            self._file_version = _exe_info['FileVersion']
+            self._product_version = _exe_info['ProductVersion']
             self._org_filename = _exe_info['OriginalFilename']
-
             self._name = _exe_info['ProductName']
             self._description = _exe_info['FileDescription']
             self._copyright = _exe_info['LegalCopyright']
@@ -107,16 +102,16 @@ class MetaData:
     def _init_metadata_from_git(self):
         _git_info = git.get_info()
         if _git_info:
-            self._repo = _git_info['repo']
+            self._repo = os.path.basename(os.path.normpath(_git_info["full_path"]))
             self._author = _git_info['author']
-            self._version = _git_info['version']
-            self._build = _git_info['build']
-            self._org_filename = _git_info['repo'] + "-" + _git_info['build']
-
+            self._build = _git_info['describe'].replace(_git_info["last_tag"] + "-", _git_info["last_tag"] + "+")
+            self._version_info = VersionInfo.parse(self._build)
+            self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
+            self._version_4_parts = f"{self._version}.0"
+            self._file_version = self._version_4_parts
+            self._product_version = self._version_4_parts
+            self._org_filename = self._repo + "-" + self._build
             self._copyright = self._author + ", " + str(date.today().year)
-
-            self._full_path = _git_info['full_path']
-            self._tags = _git_info['tags']
 
     def _override_metadata_from_file(self):
         app_meta_file = glob.glob(os.path.join(self._full_path, "APP_META*"))[0]
@@ -125,7 +120,7 @@ class MetaData:
                 (_key, _val) = _line.split(" = ")
                 setattr(self, "_{}".format(_key.strip()), _val.strip())
                 if _key.strip() == "author":
-                    # since author is part of copyright, reset copyright too
+                    # Since author is part of copyright, reset copyright too
                     self._copyright = self._author + ", " + str(date.today().year)
 
     def _interactively_ask_for_metadata(self):
@@ -142,64 +137,70 @@ class MetaData:
                 f.write("name = {}\n".format(self._name))
                 f.write("description = {}\n".format(self._description))
 
-    def get(self):
-        """ Get all the applications metadata as a dictionary """
-        self._metadata['repo'] = self._repo
-        self._metadata['author'] = self._author
-        self._metadata['version'] = self._version
-        self._metadata['build'] = self._build
-        self._metadata['org_filename'] = self._org_filename
-        self._metadata['name'] = self._name
-        self._metadata['description'] = self._description
-        self._metadata['copyright'] = self._copyright
-        self._metadata['tags'] = self._tags
-
-        return self._metadata
-
     @property
     def repo(self):
-        """ Get the applications repo from metadata """
         return self._repo
 
     @property
     def author(self):
-        """ Get the applications author from metadata """
         return self._author
 
     @property
-    def version(self):
-        """ Get the applications version from metadata """
-        return self._version
-
-    @property
     def build(self):
-        """ Get the applications build from metadata """
         return self._build
 
     @property
+    def version_info(self):
+        return self._version_info
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def version_4_parts(self):
+        return self._version_4_parts
+
+    @property
+    def file_version(self):
+        return self._file_version
+
+    @property
+    def product_version(self):
+        return self._product_version
+
+    @property
     def org_filename(self):
-        """ Get the applications original filename from metadata """
         return self._org_filename
 
     @property
     def name(self):
-        """ Get the applications name from metadata """
         return self._name
 
     @property
     def description(self):
-        """ Get the applications description from metadata """
         return self._description
 
     @property
     def copyright(self):
-        """ Get the applications copyright from metadata """
         return self._copyright
 
-    @property
-    def tags(self):
-        """ Get the applications tags as a list """
-        return self._tags
+    def get(self):
+        """ Get all the application's metadata as a dictionary """
+        return {
+            'repo': self.repo,
+            'author': self.author,
+            'build': self.build,
+            'version_info': self.version_info,
+            'version': self.version,
+            'version_4_parts': self.version_4_parts,
+            'file_version': self.file_version,
+            'product_version': self.product_version,
+            'org_filename': self.org_filename,
+            'name': self.name,
+            'description': self.description,
+            'copyright': self.copyright,
+        }
 
 
 if __name__ == '__main__':
@@ -209,6 +210,15 @@ if __name__ == '__main__':
     metadata = MetaData()
 
     version = metadata.version
+    print(version)
+
+    version_4_parts = metadata.version_4_parts
+    print(version_4_parts)
+
+    version_dict = metadata.version_info.to_dict()
+    print(version_dict)
+
+    version = metadata.version_info.build
     print(version)
 
     metadata = metadata.get()
