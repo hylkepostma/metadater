@@ -53,13 +53,15 @@ for field in metadata:
 ```stdout
 repo metadater
 author John Doe
-build 1.1.0+1-g9d1df92
-version_info 1.1.0+1-g9d1df92
-version 1.1.0
-version_4_parts 1.1.0.0
-file_version 1.1.0.0
-product_version 1.1.0.0
-org_filename metadater-1.1.0+1-g9d1df92
+semver 1.3.0-rc.1+5-g083bb67
+version_info 1.3.0-rc.1+5-g083bb67
+version 1.3.0
+prerelease rc.1
+build 5-g083bb67
+version_4_parts 1.3.0.0
+file_version 1.3.0.0
+product_version 1.3.0-rc.1
+org_filename metadater-1.3.0-rc.1+5-g083bb67
 name Metadater
 description Lorem ipsum this app dolor sit amet
 copyright John Doe, 2020
@@ -83,7 +85,7 @@ copyright John Doe, 2020
 
 ## Override using APP_META file
 
-You can override or expand the Git values using an APP_META file in your repository's root.
+You can override the Git values using an APP_META file in your repository's root.
 The file should contain the fields (and values) you want to override, like so:
 
 ```APP_META
