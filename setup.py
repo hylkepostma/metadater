@@ -1,14 +1,6 @@
-"""A setuptools based setup module.
-
-See:
-https://packaging.python.org/en/latest/distributing.html
-https://github.com/pypa/sampleproject
-"""
-
-# Always prefer setuptools over distutils
+from subprocess import check_output
 from setuptools import setup, find_packages
 
-from metadater import MetaData
 
 setup(
     name='metadater',
@@ -16,7 +8,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version=MetaData().version,
+    version=check_output(["git", "describe", "--tags", "--abbrev=0"]).decode("utf-8").strip(),
 
     description="A Python package providing an easy way to get a Windows app's version and other metadata "
                 "from Git during development or from the executable after freezing.",
