@@ -208,20 +208,6 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
 
-    metadata = MetaData()
-
-    version = metadata.version
-    print(version)
-
-    version_4_parts = metadata.version_4_parts
-    print(version_4_parts)
-
-    version_dict = metadata.version_info.to_dict()
-    print(version_dict)
-
-    version = metadata.version_info.build
-    print(version)
-
-    metadata = metadata.get()
+    metadata = MetaData().get()
     for field in metadata:
         print(field, metadata[field])
