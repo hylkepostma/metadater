@@ -17,7 +17,7 @@ When you inject these metadata fields to your executable after the freezing proc
 - Your project has a Git repository
 - Your repository has at least one commit
 - Your repository has at least one tag following the [SemVer specification](https://semver.org/)
-- There is a Git user.name configured
+- There is a Git `user.name` and `user.email` configured
 
 ## Installation
 
@@ -32,87 +32,108 @@ pip install metadater
 To get a specific metadata field:
 
 ```python
-from metadater import MetaData
-metadata = MetaData()
-metadata.version
+from metadater import MetaDater
+metadata = MetaDater().metadata
+print(metadata.version)
 ```
 
 ```stdout
 1.2.3
 ```
 
+```python
+print(metadata.author)
+```
+
+```stdout
+John Doe
+```
+
 To get all metadata fields:
 
 ```python
-from metadater import MetaData
-metadata = MetaData().get()
+from metadater import MetaDater
+metadata = MetaDater().get()
 for field in metadata:
     print(field, metadata[field])
 ```
 
 ```stdout
-repo metadater
 author John Doe
-semver 1.3.0-rc.1+5-g083bb67
-version_info 1.3.0-rc.1+5-g083bb67
-version 1.3.0
-prerelease rc.1
-build 5-g083bb67
-version_4_parts 1.3.0.0
-file_version 1.3.0.0
-product_version 1.3.0-rc.1
-org_filename metadater-1.3.0-rc.1+5-g083bb67
-name Metadater
-description Lorem ipsum this app dolor sit amet
+build 0-g1d1757c-dirty
 copyright John Doe, 2020
+description Lorem ipsum this app dolor sit amet
+email john@example.com
+file_version 2.0.5.0
+name Metadater
+prerelease rc.1
+product_version 2.0.5-rc.1+0-g1d1757c-dirty
+repo metadater
+semver 2.0.5-rc.1+0-g1d1757c-dirty
+version 2.0.5
+version_prerelease 2.0.5-rc.1
+version_info 2.0.5-rc.1+0-g1d1757c-dirty
 ```
 
-## Available getters
+## API
 
-- get()
-- repo
-- author
-- build
-- version_info (returning a [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object)
-- version
-- version_4_parts
-- file_version
-- product_version
-- org_filename
-- name
-- description
-- copyright
+### class `MetaDater`
 
-## Override using APP_META file
+- `metadata` contains the `MetaData` object
+- `get()` returns a dictionary with all the attributes of the `MetaData` object
 
-You can override the Git values using an APP_META file in your repository's root.
-The file should contain the fields (and values) you want to override, like so:
+### class `MetaData`
 
-```APP_META
-name = Fancy Company Name - My App
-author = Fancy Company Name
+- `repo`
+- `name`
+- `description`
+- `author`
+- `email` is only available in unfrozen state
+- `copyright`
+- `semver`
+- `version_info` contains a `VersionInfo` object [(more info)](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) 
+- `version`
+- `prerelease`
+- `build`
+- `file_version`
+- `product_version`
+- `version_prerelease`
+
+## Override using `metadata.json` file
+
+You can override the Git values using an `metadata.json` file in your repository's root.
+The file should contain the fields (and values) you want to override (or add), like so:
+
+```json
+{
+    "author": "John Doe",
+    "license": "MIT",
+    "foo": "bar"
+}
 ```
+
+Please note that newly added values (like `license` and `foo`) are only available in unfrozen state because they lack a mapping with the PE header.
 
 ## Mapping
 
 Metadater uses a Python package called `pefile` for finding metadata in the PE headers and makes it available using the following mapping:
 
-| Metadater       | Frozen executable (PE)                | As script in Git repository                    | Example values                                                                |
-|-----------------|---------------------------------------|------------------------------------------------|-------------------------------------------------------------------------------|
-| repo            | InternalName                          | Name of the repository folder                  | my-app                                                                        |
-| author          | CompanyName                           | Git user.name                                  | John Doe                                                                      |
-| semver          | PrivateBuild                          | Variation of Git describe (in SemVer format)   | 1.2.3+1-00a00a00 / 1.2.3-rc.1+1-00a00a00                                      |
-| version_info    | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver          | VersionInfo(major=1, minor=2, patch=3, prerelease='rc.1', build='1-00a00a00') |
-| version         | major.minor.patch from version_info   | major.minor.patch from version_info            | 1.2.3                                                                         |
-| prerelease      | prelease from version_info            | prerelease from version_info                   | rc.1                                                                          |
-| build           | build from version_info               | build from version_info                        | 1-00a00a00                                                                    |
-| version_4_parts | major.minor.patch.0 from version_info | major.minor.patch.0 from version_info          | 1.2.3.0                                                                       |
-| file_version    | FileVersion                           | major.minor.patch.0 from version_info          | 1.2.3.0                                                                       |
-| product_version | ProductVersion                        | major.minor.patch-prerelease from version_info | 1.2.3.0 / 1.2.3-rc.1                                                          |
-| org_filename    | OriginalFilename                      | repo+build                                     | my-app-1.2.3+1-00a00a00                                                       |
-| name            | ProductName                           | interactive / APP_META file                    | My App                                                                        |
-| description     | FileDescription                       | interactive / APP_META file                    | Lorem ipsum this app dolor sit amet                                           |
-| copyright       | LegalCopyright                        | interactive / APP_META file                    | John Doe, 2017                                                                |
+| Metadater       | Frozen executable (PE)                                                                                              | As script in Git repository                                                                                         | Example values                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| repo            | InternalName                                                                                                        | Name of the repository folder                                                                                       | my-app                                                                        |
+| author          | CompanyName                                                                                                         | Git user.name                                                                                                       | John Doe                                                                      |
+| email          | Not available                                                                                                         | Git user.email                                                                                                       | john@example.com                                                                      |
+| semver          | PrivateBuild                                                                                                        | Variation of Git describe (in SemVer format)                                                                        | 1.2.3+1-00a00a00 / 1.2.3-rc.1+1-00a00a00                                      |
+| version_info    | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver | [VersionInfo](https://python-semver.readthedocs.io/en/latest/api.html#semver.VersionInfo) object from parsed semver | VersionInfo(major=1, minor=2, patch=3, prerelease='rc.1', build='1-00a00a00') |
+| version         | major.minor.patch from version_info                                                                                 | major.minor.patch from version_info                                                                                 | 1.2.3                                                                         |
+| prerelease      | prerelease from version_info                                                                                        | prerelease from version_info                                                                                        | rc.1                                                                          |
+| version_prerelease      | version-prerelease                                                                                        | version-prerelease                                                                                        | 1.2.3-rc.1                                                                          |
+| build           | build from version_info                                                                                             | build from version_info                                                                                             | 1-00a00a00                                                                    |
+| file_version    | FileVersion                                                                                                         | major.minor.patch.0 from version_info                                                                               | 1.2.3.0                                                                       |
+| product_version | ProductVersion                                                                                                      | major.minor.patch-prerelease from version_info                                                                      | 1.2.3.0 / 1.2.3-rc.1                                                          |
+| name            | ProductName                                                                                                         | interactive / APP_META file                                                                                         | My App                                                                        |
+| description     | FileDescription                                                                                                     | interactive / APP_META file                                                                                         | Lorem ipsum this app dolor sit amet                                           |
+| copyright       | LegalCopyright                                                                                                      | interactive / APP_META file                                                                                         | John Doe, 2020                                                                |
 
 ## Acknowledgements
 

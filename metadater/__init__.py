@@ -1,17 +1,17 @@
-import glob
+import json
 import logging
 import os
 import re
 import sys
 from datetime import date
-from subprocess import CalledProcessError
-from subprocess import check_output
+from enum import Enum
+from pathlib import Path
+from subprocess import CalledProcessError, check_output
 
 import click
 from semver import VersionInfo
 
-from metadater import exe
-from metadater import git
+from metadater import exe, git
 
 logger = logging.getLogger(__name__)
 
@@ -25,189 +25,202 @@ ERROR_NO_GIT = """
 """
 
 
-class MetaData:
+class Source(Enum):
+    GIT = 1
+    PE = 2
+    JSON = 3
 
-    def __init__(self):
+
+class MetaData:
+    repo = None
+    name = None
+    description = None
+    author = None
+    email = None
+    copyright = None
+    semver = None
+    version_info = None
+    version = None
+    prerelease = None
+    build = None
+    file_version = None
+    product_version = None
+    version_prerelease = None
+
+    def __init__(self, dictionary=None):
+        if dictionary:
+            for k, v in dictionary.items():
+                setattr(self, k, v)
+
+
+class MetaDater:
+    _source: Source = None
+    _full_repo_path: Path = None
+    _json_meta_file: Path = None
+
+    metadata: MetaData = MetaData()
+
+    def __init__(
+        self, semantic_version=None, refresh_version=True, refresh_copyright=True
+    ):
         self._determine_source()
         self._init_metadata_from_source()
+        if self._source == Source.JSON:
+            if refresh_version:
+                self._refresh_version(semantic_version)
+            if refresh_copyright:
+                self._refresh_copyright()
+            self.to_disk()
 
     def _determine_source(self):
-        if hasattr(sys, 'frozen'):
-            # The program is frozen with PyInstaller
-            logger.debug("I think I'm frozen")
-            self._source = "pe"
+        if hasattr(sys, "frozen"):
+            self._source = Source.PE
         else:
-            logger.debug("I think I'm a script")
-            self._find_full_path()
-            if self._full_path:
-                self._source = "git"
-                self._has_app_meta_file = self._find_app_meta_file()
+            self._find_full_repo_path()
+            self._find_json_meta_file()
+            if self._json_meta_file:
+                self._source = Source.JSON
+            else:
+                self._source = Source.GIT
 
-    def _find_full_path(self):
+    def _find_full_repo_path(self):
         try:
-            self._full_path = check_output(["git", "rev-parse", "--show-toplevel"]).decode("utf-8").strip()
+            self._full_repo_path = Path(
+                check_output(["git", "rev-parse", "--show-toplevel"])
+                .decode("utf-8")
+                .strip()
+            )
         except CalledProcessError:
             logger.error(ERROR_NO_GIT)
             exit(1)
 
-    def _find_app_meta_file(self):
-        if glob.glob(os.path.join(self._full_path, "APP_META")):
-            return True
-        else:
-            return False
+    def _find_json_meta_file(self):
+        _json_meta_file = self._full_repo_path / "metadata.json"
+        if _json_meta_file.is_file():
+            self._json_meta_file = _json_meta_file
 
     def _init_metadata_from_source(self):
-        if self._source == "pe":
+        if self._source == Source.PE:
             self._init_metadata_from_pe()
-        elif self._source == "git":
+        elif self._source == Source.GIT:
             self._init_metadata_from_git()
-            if self._has_app_meta_file:
-                self._override_metadata_from_file()
-            else:
-                self._interactively_ask_for_metadata()
-                self._write_metadata_to_file()
+            self._interactively_ask_for_metadata()
+            self._write_metadata_to_json()
+        elif self._source == Source.JSON:
+            self._init_metadata_from_json()
 
     def _init_metadata_from_pe(self):
         _exe_info = exe.get_info()
         if _exe_info:
-            self._repo = _exe_info['InternalName']
-            self._author = _exe_info['CompanyName']
-            self._semver = _exe_info['PrivateBuild']
-            self._version_info = VersionInfo.parse(self._semver)
-            self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
-            self._prerelease = self._version_info.prerelease
-            self._build = self._version_info.build
-            self._version_4_parts = f"{self._version}.0"
-            self._file_version = _exe_info['FileVersion']
-            self._product_version = _exe_info['ProductVersion']
-            self._org_filename = _exe_info['OriginalFilename']
-            self._name = _exe_info['ProductName']
-            self._description = _exe_info['FileDescription']
-            self._copyright = _exe_info['LegalCopyright']
+            self.metadata.repo = _exe_info["InternalName"]
+            self.metadata.name = _exe_info["ProductName"]
+            self.metadata.description = _exe_info["FileDescription"]
+            self.metadata.author = _exe_info["CompanyName"]
+            self.metadata.copyright = _exe_info["LegalCopyright"]
+            self.metadata.semver = _exe_info["PrivateBuild"]
+            self.metadata.version_info = VersionInfo.parse(self.metadata.semver)
+            self.metadata.version = f"{self.metadata.version_info.major}.{self.metadata.version_info.minor}.{self.metadata.version_info.patch}"
+            self.metadata.prerelease = self.metadata.version_info.prerelease
+            self.metadata.build = self.metadata.version_info.build
+            self.metadata.file_version = _exe_info["FileVersion"]
+            self.metadata.product_version = _exe_info["ProductVersion"]
+            if self.metadata.prerelease:
+                self.metadata.version_prerelease = (
+                    f"{self.metadata.version}-{self.metadata.prerelease}"
+                )
+            else:
+                self.metadata.version_prerelease = self.metadata.version
 
     def _init_metadata_from_git(self):
         _git_info = git.get_info()
         if _git_info:
-            self._repo = os.path.basename(os.path.normpath(_git_info["full_path"]))
-            self._author = _git_info['author']
-            self._semver = _git_info['describe'].replace(_git_info["last_tag"] + "-", _git_info["last_tag"] + "+")
-            self._version_info = VersionInfo.parse(self._semver)
-            self._version = f"{self._version_info.major}.{self._version_info.minor}.{self._version_info.patch}"
-            self._prerelease = self._version_info.prerelease
-            self._build = self._version_info.build
-            self._version_4_parts = f"{self._version}.0"
-            self._file_version = self._version_4_parts
-            if self._prerelease:
-                self._product_version = f"{self._version}-{self._prerelease}"
-            else:
-                self._product_version = self._version_4_parts
-            self._org_filename = self._repo + "-" + self._semver
-            self._copyright = self._author + ", " + str(date.today().year)
+            self._set_basic_fields(_git_info)
+            _semantic_version = _git_info["describe"].replace(
+                _git_info["last_tag"] + "-", _git_info["last_tag"] + "+"
+            )
+            self._set_version_fields(_semantic_version)
 
-    def _override_metadata_from_file(self):
-        app_meta_file = glob.glob(os.path.join(self._full_path, "APP_META*"))[0]
-        with open(app_meta_file) as _f:
-            for _line in _f:
-                (_key, _val) = _line.split(" = ")
-                setattr(self, "_{}".format(_key.strip()), _val.strip())
-                if _key.strip() == "author":
-                    # Since author is part of copyright, reset copyright too
-                    self._copyright = self._author + ", " + str(date.today().year)
+    def _set_basic_fields(self, _git_info):
+        self.metadata.repo = os.path.basename(os.path.normpath(_git_info["full_path"]))
+        self.metadata.author = _git_info["author"]
+        self.metadata.email = _git_info["email"]
+        self.metadata.copyright = self.metadata.author + ", " + str(date.today().year)
+
+    def _set_version_fields(self, _semantic_version):
+        self.metadata.semver = _semantic_version
+        self.metadata.version_info = VersionInfo.parse(self.metadata.semver)
+        self.metadata.version = f"{self.metadata.version_info.major}.{self.metadata.version_info.minor}.{self.metadata.version_info.patch}"
+        self.metadata.prerelease = self.metadata.version_info.prerelease
+        self.metadata.build = self.metadata.version_info.build
+        self.metadata.file_version = f"{self.metadata.version}.0"
+        self.metadata.product_version = self.metadata.semver
+        if self.metadata.prerelease:
+            self.metadata.version_prerelease = (
+                f"{self.metadata.version}-{self.metadata.prerelease}"
+            )
+        else:
+            self.metadata.version_prerelease = self.metadata.version
+
+    def _refresh_version(self, _semantic_version):
+        if not _semantic_version:
+            _git_info = git.get_info()
+            if _git_info:
+                _semantic_version = _git_info["describe"].replace(
+                    _git_info["last_tag"] + "-", _git_info["last_tag"] + "+"
+                )
+        self._set_version_fields(_semantic_version)
+
+    def _refresh_copyright(self):
+        self.metadata.copyright = self.metadata.author + ", " + str(date.today().year)
+
+    def _init_metadata_from_json(self):
+        _path = Path(self._full_repo_path) / "metadata.json"
+        with _path.open() as _f:
+            _metadata = json.load(_f)
+            self.metadata = MetaData(_metadata)
+            self.metadata.version_info = VersionInfo.parse(self.metadata.semver)
 
     def _interactively_ask_for_metadata(self):
-        _name = re.sub('[^0-9a-zA-Z]+', ' ', self._repo).title()
-        self._name = click.prompt("Please enter a name for your app", default=_name)
+        _name = re.sub("[^0-9a-zA-Z]+", " ", self.metadata.repo).title()
+        self.metadata.name = click.prompt(
+            "Please enter a name for your app", default=_name
+        )
+        self.metadata.description = click.prompt(
+            "Please enter a description for your app",
+            default="Lorem ipsum this app dolor sit amet",
+        )
 
-        self._description = click.prompt("Please enter a description for your app",
-                                         default="Lorem ipsum this app dolor sit amet")
+    def _write_metadata_to_json(self):
+        if click.confirm(
+            "Do you want to create a metadata.json file. "
+            "This prevents you from having to answer these questions again."
+        ):
+            self.to_disk()
 
-    def _write_metadata_to_file(self):
-        if click.confirm('Do you want to create an APP_META file. '
-                         'It will spare you these questions next time.'):
-            with open(os.path.join(self._full_path, "APP_META"), 'w') as f:
-                f.write("name = {}\n".format(self._name))
-                f.write("description = {}\n".format(self._description))
-
-    @property
-    def repo(self):
-        return self._repo
-
-    @property
-    def author(self):
-        return self._author
-
-    @property
-    def semver(self):
-        return self._semver
-
-    @property
-    def version_info(self):
-        return self._version_info
-
-    @property
-    def version(self):
-        return self._version
-
-    @property
-    def prerelease(self):
-        return self._prerelease
-
-    @property
-    def build(self):
-        return self._build
-
-    @property
-    def version_4_parts(self):
-        return self._version_4_parts
-
-    @property
-    def file_version(self):
-        return self._file_version
-
-    @property
-    def product_version(self):
-        return self._product_version
-
-    @property
-    def org_filename(self):
-        return self._org_filename
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def description(self):
-        return self._description
-
-    @property
-    def copyright(self):
-        return self._copyright
+    def to_disk(self, _path: Path = None):
+        """ Write the metadata as JSON to disk """
+        if not _path:
+            _path = self._full_repo_path / "metadata.json"
+        if not type(_path) == Path:
+            _path = Path(_path)
+        _metadata = self.get().copy()
+        del _metadata["version_info"]  # VersionInfo is not JSON serializable
+        _path.parent.mkdir(parents=True, exist_ok=True)
+        with _path.open("w") as _f:
+            json.dump(_metadata, _f, indent=4, sort_keys=True)
 
     def get(self):
         """ Get all the application's metadata as a dictionary """
-        return {
-            'repo': self.repo,
-            'author': self.author,
-            'semver': self.semver,
-            'version_info': self.version_info,
-            'version': self.version,
-            'prerelease': self.prerelease,
-            'build': self.build,
-            'version_4_parts': self.version_4_parts,
-            'file_version': self.file_version,
-            'product_version': self.product_version,
-            'org_filename': self.org_filename,
-            'name': self.name,
-            'description': self.description,
-            'copyright': self.copyright,
-        }
+        return self.metadata.__dict__
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     logging.basicConfig(level=logging.DEBUG)
 
-    metadata = MetaData().get()
+    metadata = MetaDater().metadata
+    print(metadata.version)
+
+    metadata = MetaDater("2.0.5-rc.1+0-g1d1757c-dirty").get()
     for field in metadata:
         print(field, metadata[field])
