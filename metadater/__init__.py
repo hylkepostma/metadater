@@ -61,15 +61,21 @@ class MetaDater:
     metadata: MetaData = MetaData()
 
     def __init__(
-        self, semantic_version=None, refresh_version=True, refresh_copyright=True
+        self,
+        semantic_version=None,
+        refresh_version=True,
+        refresh_copyright=True,
+        to_disk=False,
     ):
         self._determine_source()
         self._init_metadata_from_source()
-        if self._source == Source.JSON:
-            if refresh_version:
-                self._refresh_version(semantic_version)
-            if refresh_copyright:
-                self._refresh_copyright()
+        if refresh_version:
+            self._refresh_version()
+        if refresh_copyright:
+            self._refresh_copyright()
+        if semantic_version:
+            self._refresh_version(semantic_version)
+        if to_disk:
             self.to_disk()
 
     def _determine_source(self):
@@ -161,7 +167,7 @@ class MetaDater:
         else:
             self.metadata.version_prerelease = self.metadata.version
 
-    def _refresh_version(self, _semantic_version):
+    def _refresh_version(self, _semantic_version=None):
         if not _semantic_version:
             _git_info = git.get_info()
             if _git_info:
