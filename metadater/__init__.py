@@ -69,14 +69,15 @@ class MetaDater:
     ):
         self._determine_source()
         self._init_metadata_from_source()
-        if refresh_version:
-            self._refresh_version()
-        if refresh_copyright:
-            self._refresh_copyright()
-        if semantic_version:
-            self._refresh_version(semantic_version)
-        if to_disk:
-            self.to_disk()
+        if self._source == Source.JSON:
+            if refresh_version:
+                self._refresh_version()
+            if refresh_copyright:
+                self._refresh_copyright()
+            if semantic_version:
+                self._refresh_version(semantic_version)
+            if to_disk:
+                self.to_disk()
 
     def _determine_source(self):
         if hasattr(sys, "frozen"):
